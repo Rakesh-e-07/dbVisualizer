@@ -1,0 +1,67 @@
+package database;
+
+import java.util.List;
+
+public class SqlPrinter {
+
+//	private final DataBasesProperties dbProperties;
+	public List<List<String>> data;
+
+	public SqlPrinter(List<List<String>> data) {
+		//		this.dbProperties = dbProperties;
+		this.data = data;
+	}
+	
+
+	public void print() {
+		if (data.isEmpty()) {
+			System.out.println("No data available to display.");
+			return;
+		}
+
+		int[] columnWidths = getColumnWidths();
+		String border = createBorder(columnWidths);
+
+		StringBuilder output = new StringBuilder(border);
+		for (List<String> row : data) {
+			output.append("\n|");
+			for (int i = 0; i < row.size(); i++) {
+				output.append(" ").append(padString(row.get(i), columnWidths[i])).append(" |");
+			}
+		}
+		output.append("\n").append(border);
+
+		System.out.println(output);
+	}
+
+	public String padString(String input, int width) {
+		StringBuilder padded = new StringBuilder(input);
+		while (padded.length() < width) {
+			padded.append(" ");
+		}
+		return padded.toString();
+	}
+
+	public int[] getColumnWidths() {
+		int columnCount = data.get(0).size();
+		int[] columnWidths = new int[columnCount];
+
+		for (List<String> row : data) {
+			for (int i = 0; i < row.size(); i++) {
+				columnWidths[i] = Math.max(columnWidths[i], row.get(i).length());
+			}
+		}
+		return columnWidths;
+	}
+
+	public String createBorder(int[] columnWidths) {
+		StringBuilder border = new StringBuilder("+");
+		for (int width : columnWidths) {
+			for (int i = 0; i < width + 2; i++) {
+				border.append("-");
+			}
+			border.append("+");
+		}
+		return border.toString();
+	}
+}
