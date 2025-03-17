@@ -1,0 +1,282 @@
+package database;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.InputMismatchException;
+import java.util.List;
+import java.util.Scanner;
+
+public class AdminUser{
+
+    DataBasesProperties dbObj;
+    Scanner scanner;
+    public List<List<String>> data;
+    
+    public AdminUser(DataBasesProperties dbObj) {
+    	this.dbObj = dbObj;
+    	this.scanner = this.dbObj.scanner;
+    }
+
+	public void startMenu() {
+		while (true) {  
+            System.out.println("\n--- Main Menu ---");
+            System.out.println("1. Databases");
+            System.out.println("2. Users");
+            System.out.println("3. Exit");
+            try {
+                int choice = scanner.nextInt();
+                scanner.nextLine();  
+
+                switch (choice) {
+                    case 1 -> handleDatabases();
+                    case 2 -> handleUser(); 
+                    case 3 -> { 
+                        dbObj.closeConnection();
+                        return;  
+                    }
+                    default -> System.out.println("Invalid choice, please try again.");
+                }
+            } catch (InputMismatchException e) {
+                System.out.println("Invalid input. Please enter a valid option.");
+                scanner.nextLine();
+            }
+        }
+	}
+	
+    public void handleDatabases() {
+        dbObj.display("SHOW DATABASES");
+        System.out.println("1. Use Database\n2. Create Database\n3. delete\n4. Break");
+        data = dbObj.getData();
+        while (true) {
+            try {
+                int choice = scanner.nextInt();
+                scanner.nextLine();
+
+                if (choice == 1) {
+                    if (dbObj.useDatabase()) {
+                        handleTables();
+                    }
+                    return;
+                } else if (choice == 2) {
+                    System.out.println("Enter the name of the new database:");
+                    String dbName = scanner.nextLine();
+                    dbObj.display("CREATE DATABASE " + dbName);
+                    return;
+                }else if(choice == 3) {
+                	
+                	System.out.println("Are you shore to delete the Database : [Y/N]");   
+                	String deleteChoice = scanner.nextLine();
+                	
+	                	if (deleteChoice.equalsIgnoreCase("y") ) {
+	                		dbObj.useDatabase();
+	                		int indexOfDB = chooseOption("database to delete : ");
+	                		String db = data.get(indexOfDB).get(0);
+	                		System.out.println(db);
+							dbObj.display("drop database " + db );
+							
+						}else if(deleteChoice.equalsIgnoreCase("n")) {
+							
+						}
+	                	
+	                	
+                }else if(choice == 4) {
+               		break;
+               	}else {
+                	System.out.println("Invalid choice.");
+                }
+            } catch (InputMismatchException e) {
+                System.out.println("Invalid input. Please enter a number.");
+                scanner.nextLine();
+            }
+        }
+    }
+    
+    public void handleTables() {
+        dbObj.display("SHOW TABLES");
+        System.out.println("1. Use Table\n2. Create Table\n3. Back");
+        while (true) {
+            try {
+                int choice = scanner.nextInt();
+                scanner.nextLine();
+
+                if (choice == 1) {
+                    int tableIndex = chooseOption("Available tables:");
+                    if (tableIndex >= 0 && tableIndex < data.size()) {
+                        String tableName = data.get(tableIndex).get(0);
+                        tableMenu(tableName);
+                    }
+                    return;
+                } else if (choice == 2) {
+                    System.out.println("Enter the table name:");
+                    String tableName = scanner.nextLine();
+                    System.out.println("Enter the column definitions (e.g., id INT, name VARCHAR(50)):");
+                    String columns = scanner.nextLine();
+                    dbObj.display("CREATE TABLE " + tableName + " (" + columns + ");");
+                    return;
+                }else if(choice == 3){
+                	
+                	break;
+                	
+                }else {
+                    System.out.println("Invalid choice.");
+                }
+            } catch (InputMismatchException e) {
+                System.out.println("Invalid input. Please enter a number.");
+                scanner.nextLine();
+            }
+        }
+    }
+    
+    public int chooseOption(String prompt) {
+        while (true) {
+            System.out.println(prompt);
+            for (int i = 0; i < data.size(); i++) {
+                System.out.println((i + 1) + " -> " + data.get(i));
+            }
+            try {
+                int choice = scanner.nextInt();
+                scanner.nextLine();
+                return choice - 1;
+            } catch (InputMismatchException e) {
+                System.out.println("Invalid input. Please enter a number.");
+                scanner.nextLine();
+            }
+        }
+    }
+    
+    public void tableMenu(String tableName) {
+        while (true) {
+            System.out.println("\n--- Table: " + tableName + " ---");
+            System.out.println("1. Describe Table");
+            System.out.println("2. View Table");
+            System.out.println("3. Edit Table");
+            System.out.println("4. Drop Table");
+            System.out.println("5. Back to Main Menu");
+            try {
+                int choice = scanner.nextInt();
+                scanner.nextLine();
+
+                switch (choice) {
+                    case 1 -> dbObj.display("DESC " + tableName);
+                    case 2 -> dbObj.display("SELECT * FROM " + tableName);
+                    case 3 -> {
+                        System.out.println("Enter your SQL query:");
+                        String query = scanner.nextLine();
+                        dbObj.display(query);
+                    }
+                    case 4 -> {
+                        System.out.println("Are you sure you want to drop this table? (Y/N)");
+                        String confirmation = scanner.nextLine();
+                        if (confirmation.equalsIgnoreCase("Y")) {
+                            dbObj.display("DROP TABLE " + tableName);
+                            return;
+                        } else {
+                            System.out.println("Table not dropped.");
+                        }
+                    }
+                    case 5 -> {
+                        return;
+                    }
+                    default -> System.out.println("Invalid choice.");
+                }
+            } catch (InputMismatchException e) {
+                System.out.println("Invalid input. Please enter a number.");
+                scanner.nextLine();
+            }
+        }
+    }
+
+
+	
+    public void handleUser() {
+        try {
+            System.out.println("1 -> show users : \n2 -> history ");
+            int choice = scanner.nextInt();
+            scanner.nextLine();
+
+            switch (choice) {
+                case 1 -> {
+                    dbObj.display("SELECT User, Host FROM mysql.user");
+                }
+                case 2 -> {
+                	System.out.println("1 -> all history\n2 -> your History");
+                	int historyChoice = scanner.nextInt();
+                	int para = 0;
+                	if (historyChoice == 1) {
+						para = 1;
+					}
+                	else if(historyChoice == 2) {
+                		para = 2;
+                	}
+                	
+                	PersonalHistory(para);
+                }
+                default -> {
+                    System.out.println("Invalid choice.");
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+    
+    public void PersonalHistory(int para) {
+    	
+//    	int choice = para;
+
+        String email = dbObj.getUserEmail();
+
+        String user_url = "jdbc:mysql://localhost:3306/users_db";
+        String user_userName = "root";
+        String user_password = "Rakesh.e.1029";
+
+        String query = "";
+        
+        if (para == 1) {
+        	System.out.println("all history....");
+        	query = "SELECT Query, Time FROM History_log ORDER BY Time DESC LIMIT 10;";
+		}
+    	else if(para == 2) {
+    		System.out.println("\nYour HISTORY .....................");
+    		query = "SELECT Query, Time FROM History_log WHERE user_Email = '" + email + "' ORDER BY Time DESC LIMIT 10;";
+    	}
+    	else if(para == 0) {
+    		return;
+    	}
+        
+        
+        try (Connection conn = DriverManager.getConnection(user_url, user_userName, user_password);
+             PreparedStatement stmt = conn.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+
+            data.clear();
+
+            List<String> headers = Arrays.asList("Query", "Executed At");
+            data.add(headers);
+
+            while (rs.next()) {
+                String storedQuery = rs.getString("Query");
+                String timeStamp = rs.getString("Time");
+                data.add(Arrays.asList(storedQuery, timeStamp));
+            }
+
+            if (data.isEmpty()) {
+                System.out.println("No history found for user: " + email);
+            } else {
+                if (dbObj.printerObj == null) {
+                    dbObj.printerObj = new SqlPrinter(data);
+                }
+                dbObj.printerObj.print();
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error retrieving user history: " + e.getMessage());
+        }
+    }
+
+
+}
