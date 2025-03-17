@@ -1,0 +1,31 @@
+package database;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+public class HistoryManager {
+	
+	private String url = "jdbc:mysql://localhost:3306/users_db";
+	private String userName = "root";
+	private String password = "Rakesh@123";
+
+	public void storeHistory(String query, String userEmail) {
+		String insertHistoryQuery = "INSERT INTO History_log (Query, user_Email) VALUES (?, ?)";
+
+		try (Connection conn = DriverManager.getConnection(url, userName, password);
+				PreparedStatement stmt = conn.prepareStatement(insertHistoryQuery)) {
+			stmt.setString(1, query);
+			stmt.setString(2, userEmail);
+			stmt.executeUpdate();
+		} catch (SQLException e) {
+			System.out.println("Error storing history: " + e.getMessage());
+		}
+	}
+
+	public void showHistory(String Query) {
+//		display(Query);
+	}
+
+}
