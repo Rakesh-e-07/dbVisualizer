@@ -1,0 +1,145 @@
+package logIn;
+
+import java.sql.*;
+import java.util.Scanner;
+
+public class UserFetcher {
+
+    private final String url = "jdbc:mysql://localhost:3306/users_db";
+    private final String user = "root";
+    private final String password = "Rakesh@123";
+    private String email;
+    private String userprivilege = "guest"; // Variable to store the user privilege
+
+    private String checkUserQuery = "SELECT * FROM user WHERE user_email = ? AND user_password = ?";
+    private String newUserQuery = "SELECT * FROM user WHERE user_email = ?";
+    private String insertUserQuery = "INSERT INTO user (user_name, user_email, user_password) VALUES (?, ?, ?)";
+    private String queryUserName = "SELECT user_name FROM user WHERE user_email = ?"; // Query to fetch user name
+
+    public String getEmail() {
+        return email;
+    }
+
+    public String getUserprivilege() {
+        return userprivilege;
+    }
+
+    public String fetchUserName(String userEmail) {
+        String userName = "Unknown";
+
+        try (Connection conn = DriverManager.getConnection(url, user, password);
+             PreparedStatement stmt = conn.prepareStatement(queryUserName)) {
+            stmt.setString(1, userEmail);
+
+            try (ResultSet resultSet = stmt.executeQuery()) {
+                if (resultSet.next()) {
+                    userName = resultSet.getString("user_name");
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error fetching user name: " + e.getMessage());
+        }
+
+        return userName;
+    }
+
+    public boolean createUser(Scanner scanner) {
+        boolean flag = false;
+
+        System.out.println("Enter user details:");
+        System.out.print("Name: ");
+        String userName = scanner.nextLine();
+        System.out.print("Email (basic format): ");
+        String userEmail = scanner.nextLine();
+        System.out.print("Password (strong format): ");
+        String userPassword = scanner.nextLine();
+
+        if (validateEmail(userEmail) && validatePassword(userPassword)) {
+            try (Connection conn = DriverManager.getConnection(url, user, password);
+                 PreparedStatement checkStmt = conn.prepareStatement(newUserQuery)) {
+
+                checkStmt.setString(1, userEmail);
+                try (ResultSet resultSet = checkStmt.executeQuery()) {
+                    if (resultSet.next()) {
+                        System.out.println("User with this email already exists.");
+                        flag = false;
+                    } else {
+                        try (PreparedStatement insertStmt = conn.prepareStatement(insertUserQuery)) {
+                            insertStmt.setString(1, userName);
+                            insertStmt.setString(2, userEmail);
+                            insertStmt.setString(3, userPassword);
+                            insertStmt.executeUpdate();
+                            System.out.println("User registered successfully.");
+                            email = userEmail;
+                            flag = true;
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                System.out.println("Error creating user: " + e.getMessage());
+            }
+        } else {
+            System.out.println("Invalid email or password format.");
+            createUser(scanner);
+        }
+
+        return flag;
+    }
+
+    public boolean checkUser(Scanner scanner) {
+        boolean flag = false;
+
+        System.out.println("Enter your login details:");
+        System.out.print("Email: ");
+        String userEmail = scanner.nextLine();
+        System.out.print("Password: ");
+        String userPassword = scanner.nextLine();
+
+        try (Connection conn = DriverManager.getConnection(url, user, password);
+             PreparedStatement stmt = conn.prepareStatement(checkUserQuery)) {
+
+            stmt.setString(1, userEmail);
+            stmt.setString(2, userPassword);
+
+            try (ResultSet resultSet = stmt.executeQuery()) {
+                if (resultSet.next()) {
+                	
+                    String storedPassword = resultSet.getString("user_password");
+                    userprivilege = resultSet.getString("privilege");
+
+                    if (storedPassword.equals(userPassword)) {
+                        System.out.println("User logged in successfully.");
+                        email = userEmail;
+//                        System.out.println("Welcome, " + fetchUserName(userEmail) + "!");
+                        flag = true;
+                    } else {
+                        System.out.println("Invalid password.");
+                    }
+                } else {
+                    System.out.println("Invalid email or password.");
+                    System.out.println("do you want to create user : (y/n)");
+                    String createuserchoice = scanner.nextLine();
+                    if (createuserchoice.equalsIgnoreCase("y")) {
+						createUser(scanner);
+					}
+                    else {
+                    	System.out.println("exiting...");
+                    }
+                    
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error checking user: " + e.getMessage());
+        }
+
+        return flag;
+    }
+
+    private boolean validateEmail(String email) {
+        return email.matches("^[\\w]+@[\\w]+\\.[a-z]{2,}$");
+    }
+
+    private boolean validatePassword(String password) {
+        return password.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*]).{8,}$");
+    }
+}
