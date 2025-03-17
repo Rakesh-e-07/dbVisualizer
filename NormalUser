@@ -1,0 +1,107 @@
+package database;
+
+import java.util.List;
+import java.util.Scanner;
+
+class NormalUser extends GuestUser {
+
+    public NormalUser(DataBasesProperties dbObj) {
+        super(dbObj);
+    }
+
+    public void createTable() {
+        String selectedDatabase = selectDatabase();
+        if (selectedDatabase == null) {
+            return;
+        }
+
+        System.out.println("Enter the name of the new table:");
+        String tableName = scanner.nextLine();
+        System.out.println("Enter the column definitions (e.g., id INT, name VARCHAR(50)):");
+        String columns = scanner.nextLine();
+
+        try {
+            dbObj.display("CREATE TABLE " + tableName + " (" + columns + ");");
+            System.out.println("Table created successfully.");
+        } catch (Exception e) {
+            System.out.println("Error creating table: " + e.getMessage());
+        }
+    }
+
+    public void insertRecord() {
+        String selectedDatabase = selectDatabase();
+        if (selectedDatabase == null) {
+            return;
+        }
+
+        System.out.println("Enter the name of the table to insert into:");
+        String tableName = scanner.nextLine();
+        System.out.println("Retrieving columns for table " + tableName + "...");
+        
+        // Show table description first to guide the user on columns
+        dbObj.display("DESC " + tableName);
+
+        System.out.println("Enter the values for the columns (comma-separated, e.g., 1, 'New Hobby', 'Outdoor'):");
+        String values = scanner.nextLine();
+
+        try {
+            dbObj.display("INSERT INTO " + tableName + " VALUES (" + values + ");");
+            System.out.println("Record inserted successfully.");
+        } catch (Exception e) {
+            System.out.println("Error inserting record: " + e.getMessage());
+        }
+    }
+
+    public void updateRecord() {
+        String selectedDatabase = selectDatabase();
+        if (selectedDatabase == null) {
+            return;
+        }
+
+        System.out.println("Enter the name of the table to update:");
+        String tableName = scanner.nextLine();
+        System.out.println("Enter the condition for the update (e.g., id = 1):");
+        String condition = scanner.nextLine();
+        System.out.println("Enter the column-value pairs to update (e.g., name = 'John'):");
+        String updates = scanner.nextLine();
+
+        try {
+            dbObj.display("UPDATE " + tableName + " SET " + updates + " WHERE " + condition + ";");
+            System.out.println("Record updated successfully.");
+        } catch (Exception e) {
+            System.out.println("Error updating record: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void startMenu() {
+        while (true) {
+            System.out.println("\n--- Normal User Menu ---");
+            System.out.println("1. Read from Database");
+            System.out.println("2. Create Table");
+            System.out.println("3. Insert Record");
+            System.out.println("4. Update Record");
+            System.out.println("5. Exit");
+
+            try {
+                int choice = scanner.nextInt();
+                scanner.nextLine(); // Consume newline
+
+                switch (choice) {
+                    case 1 -> read();
+                    case 2 -> createTable();
+                    case 3 -> insertRecord();
+                    case 4 -> updateRecord();
+                    case 5 -> {
+                        System.out.println("Exiting.");
+                        return;
+                    }
+                    default -> System.out.println("Invalid choice. Please try again.");
+                }
+            } catch (Exception e) {
+                System.out.println("Invalid input. Please enter a valid option.");
+                scanner.nextLine(); // Clear invalid input
+            }
+        }
+    }
+}
