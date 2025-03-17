@@ -1,0 +1,246 @@
+package database;
+
+import java.sql.*;
+import java.util.*;
+
+import logIn.UserFetcher;
+
+public class DataBasesProperties extends HistoryManager {
+    private String host;
+    private String url;
+    private String userName;
+    private String password;
+    private String userEmail;
+    private String userprivilege;
+
+    private Connection connection;
+    private Statement statement;
+
+    protected Scanner scanner = new Scanner(System.in);
+    private UserFetcher ul = new UserFetcher();
+    protected SqlPrinter printerObj;
+    private AdminUser adminObj;
+
+    public List<List<String>> data = new ArrayList<>();
+
+    public static void main(String[] args) {
+        DataBasesProperties obj = new DataBasesProperties();
+        obj.startMenu();
+    }
+
+    public boolean connect() {
+        System.out.println("Enter the database username:");
+        userName = scanner.nextLine();
+        System.out.println("Enter the database password:");
+        password = scanner.nextLine();
+
+        try {
+            connection = DriverManager.getConnection(url, userName, password);
+            System.out.println("Connected Successfully!");
+            return true;
+        } catch (SQLException e) {
+            System.out.println("Connection Failed: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean getIn() {
+        System.out.println("1 -> login \n2 -> signUp\n3 -> Guest");
+        String num = scanner.nextLine();
+        boolean flag = false;
+
+        while (true) {
+            switch (num) {
+            case "1":
+                flag = ul.checkUser(scanner);
+                if (flag) {
+                    setUserEmail(ul.getEmail());
+                }
+                return flag;
+            case "2":
+                flag = ul.createUser(scanner);
+                if (flag) {
+                    setUserEmail(ul.getEmail());
+                }
+                return flag;
+            case "3":
+                userName = "guest";
+                setUserEmail("rakesh@zoho.love");
+                flag = true;
+                return flag;
+            default:
+                System.out.println("Invalid choice, please try again.");
+                startMenu();
+            }
+        }
+    }
+
+    public void display(String query) {
+        try {
+            statement = connection.createStatement();
+            boolean isResultSet = statement.execute(query);
+
+            if (isDatabaseSelected()) {
+                storeHistory(query, getUserEmail());
+                
+            }
+
+            if (isResultSet) {
+                try (ResultSet resultSet = statement.getResultSet()) {
+                    ResultSetMetaData metaData = resultSet.getMetaData();
+                    int columnCount = metaData.getColumnCount();
+
+                    for (int i = 1; i <= columnCount; i++) {
+                        System.out.print(metaData.getColumnName(i) + "\t");
+                    }
+                    System.out.println();
+
+                    data.clear();
+                    while (resultSet.next()) {
+                        List<String> row = new ArrayList<>();
+                        for (int i = 1; i <= columnCount; i++) {
+                            String value = resultSet.getString(i);
+                            row.add(value != null ? value : "NULL");
+                        }
+                        data.add(row);
+                    }
+
+                    if (data.isEmpty()) {
+                        System.out.println("No data found.");
+                    } else {
+                        if (printerObj == null) {
+                            printerObj = new SqlPrinter(data);
+                        }
+                        printerObj.print();
+                    }
+                }
+            } else {
+                int rowsAffected = statement.getUpdateCount();
+                System.out.println(rowsAffected + " row(s) affected.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error executing query: " + e.getMessage());
+        }
+    }
+
+    public boolean useDatabase() {
+        System.out.println("Choose a database:");
+        int index = adminObj.chooseOption("Available databases:");
+        if (index >= 0 && index < data.size()) {
+            String selectedDatabase = data.get(index).get(0);
+            display("USE " + selectedDatabase);
+            System.out.println("Switched to database : " + selectedDatabase);
+            return true;
+        } else {
+            System.out.println("Invalid choice.");
+            return false;
+        }
+    }
+
+    private boolean getHost() {
+        boolean flag = false;
+        System.out.println("Enter the Host type : \n1 -> localHost\n2 -> IP Address");
+        String hostType = scanner.nextLine();
+
+        if (hostType.equalsIgnoreCase("1")) {
+            System.out.println("Now in LocalHost ....");
+            host = "localhost";
+            flag = true;
+        } else if (hostType.equalsIgnoreCase("2")) {
+            System.out.print("Enter the IP address : ");
+            String temp = scanner.nextLine();
+            if (isValidIPv4(temp)) {
+                host = temp;
+                flag = true;
+            } else {
+                System.out.println("Invalid IP Address. Please try again.");
+                flag = getHost();
+            }
+        }
+        if (flag) {
+            url = "jdbc:mysql://" + host + ":3306/";
+        }
+        return flag;
+    }
+
+    public boolean isValidIPv4(String ip) {
+        String[] parts = ip.split("\\.");
+        if (parts.length != 4) {
+            return false;
+        }
+
+        for (String part : parts) {
+            try {
+                int num = Integer.parseInt(part);
+                if (num < 0 || num > 255) {
+                    return false;
+                }
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public void startMenu() {
+        System.out.println("Welcome to Database Manager!");
+        
+        while(true) {
+	        if(getIn()) { 
+	        	userprivilege = ul.getUserprivilege();
+	        	System.out.println(userprivilege +"     "+ ul.fetchUserName(userEmail));
+	        	while(true) {
+	        		if (getHost()) { 
+	        			while(true) {
+	        				if (connect()) { 
+	        					
+	        					if (userprivilege.equals("admin")) {
+	        						adminObj = new AdminUser(this);
+	        						adminObj.startMenu();
+	        					} else if (userprivilege.equals("user")) {
+	        						NormalUser normalUser = new NormalUser(this);
+	        						normalUser.startMenu();
+	        					} else {
+	        						GuestUser guestUser = new GuestUser(this);
+	        						guestUser.startMenu();
+	        					}
+	        					
+	        				}
+	        			}
+	        		}
+	        	}
+	        }
+        }
+    }
+
+    private boolean isDatabaseSelected() {
+        return url != null && !url.isEmpty();
+    }
+
+    protected void closeConnection() {
+        try {
+            if (connection != null) {
+                connection.close();
+                System.out.println("Connection closed.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error closing connection: " + e.getMessage());
+        }
+    }
+
+    public List<List<String>> getData() {
+        return data;
+    }
+
+    public void setData(List<List<String>> data) {
+        this.data = data;
+    }
+
+	public String getUserEmail() {
+		return userEmail;
+	}
+
+	public void setUserEmail(String userEmail) {
+		this.userEmail = userEmail;
+	}
+}
